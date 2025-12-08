@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>La Tavola — Меню</title>
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Yandex Maps API -->
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=09b5ff38-21a8-4d1d-a0a2-a08e12528dcc&lang=ru_BY" type="text/javascript"></script>
+
+  <!-- Кастомные стили -->
+  <style>
+    :root {
+      --accent: #ff8f00;
+      --accent-2: #ffca28;
+    }
+
+    body {
+      background: linear-gradient(180deg, #fbf7f2 0%, #fff 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .dish-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      cursor: pointer;
+    }
+    .dish-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 10px 30px rgba(15, 23, 36, 0.12);
+    }
+
+    .dish-image {
+      height: 180px;
+      width: 100%;
+      display: block;
+      background: linear-gradient(90deg, rgba(255, 140, 0, 0.08), rgba(255, 202, 40, 0.04));
+    }
+    .dish-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Modal */
+    #modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    #modal.show {
+      display: flex;
+    }
+
+    #modal-content {
+      position: relative;
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(20, 20, 20, 0.95);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 999px;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    /* Категории — горизонтальный скролл */
+    .category-container {
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      user-select: none;
+    }
+
+    .chip {
+      transition: all 0.2s ease;
+    }
+    .chip.active {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: white;
+    }
+
+    /* Карта */
+    #map-container {
+      width: 100%;
+      height: 300px;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- Header -->
+  <header class="p-4 text-white flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="bg-white/20 rounded-full p-2">
+        <img src="/web_app/assets/logo.png" alt="logo" class="h-8 w-8 object-contain">
+      </div>
+      <div>
+        <h1 class="text-lg font-semibold">La Tavola</h1>
+        <div class="text-xs opacity-90">Добро пожаловать, <span id="userName">Гость</span></div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <button id="cart-btn" aria-label="Корзина" class="relative p-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 7h12l-2-7M16 21a1 1 0 100-2 1 1 0 000 2zm-8 0a1 1 0 100-2 1 1 0 000 2z"/>
+        </svg>
+        <span id="cart-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
+      </button>
+      <button id="profile-btn" class="p-2 text-xl">👤</button>
+    </div>
+  </header>
+
+  <!-- Промо-баннеры -->
+  <div id="promotions" class="p-4">
+    <div class="max-w-5xl mx-auto">
+      <div id="promotion-list" class="flex gap-3 overflow-auto"></div>
+    </div>
+  </div>
+
+  <!-- Триггер выбора типа заказа -->
+  <div class="max-w-5xl mx-auto w-full p-3 mb-4">
+    <button id="order-type-trigger" class="w-full p-3 rounded-lg bg-white shadow-sm text-center">
+      <div id="orderType" class="text-gray-700">🚚 Выберите: Доставка или Ресторан</div>
+    </button>
+  </div>
+
+  <!-- Основное меню -->
+  <main class="max-w-5xl mx-auto w-full p-4 flex-1">
+    <section class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Меню</h2>
+      <div id="category-container" class="category-container flex gap-2 overflow-x-auto mb-4 pb-1">
+        <button class="chip category-btn px-4 py-2 rounded-full shadow-sm text-sm bg-white" data-cat="">🌟 Все</button>
+        <button class="chip category-btn px-4 py-2 rounded-full shadow-sm text-sm bg-white" data-cat="burgers">🍔 Бургеры</button>
+        <button class="chip category-btn px-4 py-2 rounded-full shadow-sm text-sm bg-white" data-cat="pizza">🍕 Пицца</button>
+        <button class="chip category-btn px-4 py-2 rounded-full shadow-sm text-sm bg-white" data-cat="drinks">🥤 Напитки</button>
+        <button class="chip category-btn px-4 py-2 rounded-full shadow-sm text-sm bg-white" data-cat="salads">🥗 Салаты</button>
+        <button class="chip category-btn px-4 py-2 rounded-full shadow-sm text-sm bg-white" data-cat="desserts">🍰 Десерты</button>
+        <button class="chip category-btn px-4 py-2 rounded-full shadow-sm text-sm bg-white" data-cat="coffee">☕ Кофе</button>
+      </div>
+    </section>
+
+    <section id="dishes-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <!-- Блюда подгружаются через JS -->
+    </section>
+
+    <div id="empty" class="text-center text-gray-400 mt-10 hidden">Нет блюд в этой категории</div>
+  </main>
+
+  <!-- Нижняя навигация -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white p-3 shadow-inner flex justify-around items-center z-40">
+    <button id="menu-btn" class="text-orange-600 font-bold">🍽 Меню</button>
+    <button id="delivery-btn" class="text-gray-600">🚚 Доставка</button>
+  </nav>
+
+  <!-- Модальное окно -->
+  <div id="modal" class="modal hidden">
+    <div id="modal-content">
+      <!-- Контент вставляется через JS -->
+    </div>
+  </div>
+
+  <!-- Уведомления -->
+  <div id="toast" role="status" aria-live="polite">Уведомление</div>
+
+  <!-- Подключение скрипта -->
+  <script src="app.js" defer></script>
+</body>
+</html>

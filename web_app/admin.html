@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ — Управление блюдами</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="admin.js" defer></script>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f3f4f6; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; }
+        input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+        .bg-green-500 { background-color: #10b981; color: white; }
+        .bg-green-500:hover { background-color: #059669; }
+        .bg-red-500 { background-color: #ef4444; color: white; }
+        .bg-red-500:hover { background-color: #dc2626; }
+        .delete-btn { padding: 4px 8px; }
+        .promo-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .promo-table th, .promo-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .promo-table th { background-color: #f9fafb; }
+    </style>
+</head>
+<body>
+    <h1 class="text-2xl font-bold mb-4">Админ — Управление блюдами</h1>
+
+    <div class="card">
+        <h2 class="text-lg font-semibold mb-2">Добавить блюдо</h2>
+        <form id="add-dish-form" class="space-y-2">
+            <div class="form-group">
+                <input type="text" name="name" placeholder="Название блюда" required>
+            </div>
+            <div class="form-group">
+                <input type="number" name="price" step="0.01" placeholder="Цена" required>
+            </div>
+            <div class="form-group">
+                <textarea name="description" placeholder="Описание"></textarea>
+            </div>
+            <div class="form-group">
+                <select name="category">
+                    <option value="burgers">Бургеры</option>
+                    <option value="pizza">Пицца</option>
+                    <option value="drinks">Напитки</option>
+                    <option value="sushi">Суши</option>
+                    <option value="salads">Салаты</option>
+                    <option value="desserts">Десерты</option>
+                    <option value="coffee">Кофе</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <input type="file" name="image" accept="image/*">
+            </div>
+            <button type="submit" class="bg-green-500">Добавить</button>
+            <button type="button" id="refresh-list" class="bg-gray-500 text-white">Обновить список</button>
+        </form>
+        <div id="add-result" class="mt-2 text-green-500"></div>
+    </div>
+
+    <div class="card">
+        <h2 class="text-lg font-semibold mb-2">Добавить нового админа</h2>
+        <form id="add-admin-form" class="space-y-2">
+            <div class="form-group">
+                <input type="text" name="username" placeholder="Username Telegram" required>
+            </div>
+            <button type="submit" class="bg-green-500">Добавить</button>
+        </form>
+        <div id="add-admin-result" class="mt-2 text-green-500"></div>
+    </div>
+
+    <div class="card">
+        <h2 class="text-lg font-semibold mb-2">Управление промокодами</h2>
+        <form id="add-promo-form" class="space-y-2">
+            <div class="form-group">
+                <input type="text" name="code" placeholder="Код промокода" required>
+            </div>
+            <div class="form-group">
+                <input type="number" name="discount" step="0.01" placeholder="Скидка (%)" min="0" max="100" required>
+            </div>
+            <div class="form-group">
+                <input type="number" name="max_uses" placeholder="Макс. использований" min="1" required>
+            </div>
+            <div class="form-group">
+                <input type="date" name="expires_at" placeholder="Дата истечения">
+            </div>
+            <button type="submit" class="bg-green-500">Добавить промокод</button>
+            <button type="button" id="refresh-promos" class="bg-gray-500 text-white">Обновить список</button>
+        </form>
+        <div id="add-promo-result" class="mt-2 text-green-500"></div>
+        <div id="promo-list" class="mt-4"></div>
+    </div>
+
+    <div class="card">
+        <h2 class="text-lg font-semibold mb-2">Список блюд</h2>
+        <div id="dish-list" class="space-y-2"></div>
+    </div>
+</body>
+</html>
