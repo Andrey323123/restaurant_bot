@@ -1,29 +1,42 @@
 import os
 from dotenv import load_dotenv
 
-# Загружаем .env (если есть)
 load_dotenv()
 
+
+def _get_required(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise ValueError(f"Environment variable {name} is required for deployment.")
+    return value
+
+
 # ================== TELEGRAM ==================
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "8220961254:AAHBQiDPihdpVjYi9cJb_PW-o30KNTvhIH0"
+BOT_TOKEN = _get_required("BOT_TOKEN")
+CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_TOKEN", "")  # optional stub
 
-if not BOT_TOKEN or ":" not in BOT_TOKEN:
-    raise ValueError("❌ Ошибка: BOT_TOKEN не найден или неверный. Проверь .env или config.py")
+# Only this Telegram ID получит доступ к админке и защищённым эндпоинтам
+ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", None)
 
-WEB_APP_URL = "https://pliable-unpunctuating-stacey.ngrok-free.dev"
+# URL фронтенда (например, https://<railway-domain>/web_app/index.html)
+WEB_APP_URL = os.getenv("WEB_APP_URL", "")
+
 # ================== DATABASE (MySQL) ==================
+# Railway даёт переменные MYSQLHOST / MYSQLUSER / MYSQLPASSWORD / MYSQLDATABASE
 MYSQL_CONFIG = {
-    'host': os.getenv("MYSQL_HOST", "localhost"),
-    'user': os.getenv("MYSQL_USER", "bot_user"),
-    'password': os.getenv("MYSQL_PASSWORD", "MyStrongPass123"),
-    'database': os.getenv("MYSQL_DB", "restaurant_db"),
+    "host": os.getenv("MYSQL_HOST") or os.getenv("MYSQLHOST", "localhost"),
+    "user": os.getenv("MYSQL_USER") or os.getenv("MYSQLUSER", "bot_user"),
+    "password": os.getenv("MYSQL_PASSWORD") or os.getenv("MYSQLPASSWORD", "MyStrongPass123"),
+    "database": os.getenv("MYSQL_DB") or os.getenv("MYSQLDATABASE", "restaurant_db"),
+    "port": int(os.getenv("MYSQL_PORT") or os.getenv("MYSQLPORT", 3306)),
 }
-
-# ================== Crypto BOT ===================
-# config.py
-CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_TOKEN", "465695:AAmnhDHAI79JLCEYAUcjQBYwio8wJjW0DA0")
 
 # ================== LOCALIZATION ==================
 CURRENCY = os.getenv("CURRENCY", "BYN")
 RESTAURANT_ADDRESS = os.getenv("RESTAURANT_ADDRESS", "ул. Советская, 1, Гомель, 246000")
-YANDEX_MAPS_API_KEY = os.getenv("YANDEX_MAPS_API_KEY", "09b5ff38-21a8-4d1d-a0a2-a08e12528dcc")  # Твой ключ
+YANDEX_MAPS_API_KEY = os.getenv("YANDEX_MAPS_API_KEY", "")
+
+# ================== Runtime ==================
+PORT = int(os.getenv("PORT", 5000))
+DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"

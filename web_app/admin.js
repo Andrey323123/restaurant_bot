@@ -1,6 +1,36 @@
 const API_BASE = (location.origin.includes('http') ? location.origin : '') + '/api';
+const tg = window.Telegram?.WebApp;
+const params = new URLSearchParams(location.search);
+let user = tg?.initDataUnsafe?.user || (params.get('uid') ? { id: params.get('uid') } : null);
+let adminConfig = { admin_id: null };
+let adminAllowed = false;
 
-document.addEventListener('DOMContentLoaded', () => {
+const authHeaders = () => (user?.id ? { 'X-Telegram-Id': user.id } : {});
+
+async function ensureAdminAccess() {
+    try {
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+        const res = await fetch(`${API_BASE}/admin/config`);
+        if (res.ok) {
+            adminConfig = await res.json();
+        }
+    } catch (e) {
+        console.warn('Failed to load admin config', e);
+    }
+    adminAllowed = Boolean(adminConfig?.admin_id && user?.id && String(user.id) === String(adminConfig.admin_id));
+    if (!adminAllowed) {
+        document.body.innerHTML = '<div class="p-6 text-center text-red-600 text-lg font-semibold">Доступ только для администратора</div>';
+    }
+    return adminAllowed;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const allowed = await ensureAdminAccess();
+    if (!allowed) return;
+
     const form = document.getElementById('add-dish-form');
     const result = document.getElementById('add-result');
     const refresh = document.getElementById('refresh-list');
@@ -19,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fd = new FormData(form);
 
         try {
-            const res = await fetch(`${API_BASE}/dishes`, { method: 'POST', body: fd });
+            const res = await fetch(`${API_BASE}/dishes`, { method: 'POST', body: fd, headers: authHeaders() });
             const data = await res.json();
             if (data.status === 'success') {
                 result.textContent = 'Блюдо добавлено';
@@ -48,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${API_BASE}/add_admin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ username })
             });
             const data = await res.json();
@@ -83,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${API_BASE}/promocodes`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ code, discount, max_uses: maxUses, expires_at: expiresAt || null })
             });
             const data = await res.json();
@@ -113,7 +143,7 @@ async function loadDishesAdmin() {
     const list = document.getElementById('dish-list');
     list.innerHTML = 'Загрузка...';
     try {
-        const res = await fetch(`${API_BASE}/dishes`);
+        const res = await fetch(`${API_BASE}/dishes`, { headers: authHeaders() });
         const data = await res.json();
         if (!data || !data.length) {
             list.innerHTML = '<div class="text-gray-500">Блюд нет</div>';
@@ -142,7 +172,7 @@ async function loadDishesAdmin() {
             btn.addEventListener('click', async () => {
                 if (!confirm('Удалить блюдо?')) return;
                 try {
-                    const r = await fetch(`${API_BASE}/dishes/${btn.dataset.id}`, { method: 'DELETE' });
+                    const r = await fetch(`${API_BASE}/dishes/${btn.dataset.id}`, { method: 'DELETE', headers: authHeaders() });
                     const j = await r.json();
                     if (j.status === 'success') loadDishesAdmin();
                     else alert('Ошибка удаления');
@@ -161,7 +191,7 @@ async function loadPromosAdmin() {
     const list = document.getElementById('promo-list');
     list.innerHTML = 'Загрузка...';
     try {
-        const res = await fetch(`${API_BASE}/promocodes`);
+        const res = await fetch(`${API_BASE}/promocodes`, { headers: authHeaders() });
         const data = await res.json();
         if (!data || !data.length) {
             list.innerHTML = '<div class="text-gray-500">Промокодов нет</div>';
@@ -190,7 +220,7 @@ async function loadPromosAdmin() {
                 try {
                     const r = await fetch(`${API_BASE}/promocodes`, {
                         method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...authHeaders() },
                         body: JSON.stringify({ id: btn.dataset.id })
                     });
                     const j = await r.json();

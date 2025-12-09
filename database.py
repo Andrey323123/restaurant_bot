@@ -1,6 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
-from config import MYSQL_CONFIG
+from config import MYSQL_CONFIG, ADMIN_TELEGRAM_ID, ADMIN_USERNAME
 import json
 from datetime import datetime
 import logging
@@ -88,6 +88,7 @@ def init_db():
     conn.commit()
     cursor.close()
     conn.close()
+    ensure_admin_user(ADMIN_TELEGRAM_ID, ADMIN_USERNAME)
 
 # user helpers
 def add_user(telegram_id, role='user', username=None):
@@ -180,6 +181,40 @@ def get_admin_username():
     except Error as e:
         logger.error(f"Ошибка получения админа: {e}")
         return None
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def ensure_admin_user(telegram_id, username=None):
+    """Creates or updates admin user based on env ADMIN_TELEGRAM_ID."""
+    if not telegram_id:
+        logger.warning("ADMIN_TELEGRAM_ID is not set; admin endpoints will be locked.")
+        return
+    try:
+        telegram_id_int = int(telegram_id)
+    except (TypeError, ValueError):
+        logger.error("ADMIN_TELEGRAM_ID must be a number.")
+        return
+
+    conn = get_connection()
+    if not conn:
+        logger.error("Cannot ensure admin user: DB connection failed.")
+        return
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO users (telegram_id, username, role)
+            VALUES (%s, %s, 'admin')
+            ON DUPLICATE KEY UPDATE username = IFNULL(%s, username), role='admin'
+            """,
+            (telegram_id_int, username, username),
+        )
+        conn.commit()
+        logger.info(f"Admin user ensured in DB with id={telegram_id_int}")
+    except Error as e:
+        logger.error(f"Failed to ensure admin user: {e}")
     finally:
         cursor.close()
         conn.close()

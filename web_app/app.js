@@ -33,14 +33,30 @@ function saveLogs() {
     URL.revokeObjectURL(url);
 }
 
-// === АДМИНКА: только для указанных ID ===
-const ADMIN_IDS = new Set(['8089114323']); // строки
-let user = tg?.initDataUnsafe?.user || { id: 8089114323, first_name: 'Admin' }; // тест локально
-const isAdmin = user?.id && ADMIN_IDS.has(String(user.id));
+// === АДМИНКА: проверяем по ID из бекенда ===
+let user = tg?.initDataUnsafe?.user || null;
+let adminConfig = { admin_id: null };
+let isAdmin = false;
 
-// --- Логируем пользователя и статус админа ---
-logToFile('user:', user);
-logToFile('isAdmin:', isAdmin);
+function updateAdminFlag() {
+    isAdmin = Boolean(adminConfig?.admin_id && user?.id && String(user.id) === String(adminConfig.admin_id));
+    logToFile('user:', user);
+    logToFile('isAdmin:', isAdmin);
+}
+
+async function fetchAdminConfig() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/config`);
+        if (res.ok) {
+            const data = await res.json();
+            adminConfig = data || { admin_id: null };
+        }
+    } catch (e) {
+        console.warn('Failed to load admin config', e);
+    } finally {
+        updateAdminFlag();
+    }
+}
 // Убрано автоматическое saveLogs()
 
 // --- Константы ---
@@ -624,7 +640,8 @@ async function openProfile() {
             const openAdminBtn = $('open-admin-panel-btn');
             if (openAdminBtn) {
                 addClickHandler(openAdminBtn, () => {
-                    const adminUrl = location.origin + '/web_app/admin.html';
+                    const uidParam = user?.id ? `?uid=${user.id}` : '';
+                    const adminUrl = location.origin + '/web_app/admin.html' + uidParam;
                     if (tg?.openLink) {
                         tg.openLink(adminUrl);
                     } else {
@@ -683,8 +700,9 @@ function openOrderTypeSelector() {
 }
 
 // --- DOM Ready ---
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM ready — initializing UI');
+    await fetchAdminConfig();
 
     if (user) {
         const nameEl = $('userName');
